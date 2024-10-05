@@ -7,6 +7,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select
 from datetime import datetime
+import pandas
 
 def fibonacci_of(n):
     # Validate the value of n
@@ -25,6 +26,12 @@ def fibonacci_of(n):
         previous, fib_number = fib_number, previous + fib_number
 
     return previous
+
+def dt_convert(from_dt: str, to_dt: str = "%d %B %Y %H:%M:%S"):
+    print(from_dt)
+    res = datetime.strptime(from_dt, "%b %d, %Y %I:%M:%S %p")
+    output = res.strftime(to_dt)
+    return output
 
 service = Service()
 options = webdriver.ChromeOptions()
@@ -126,14 +133,23 @@ try:
 
     table = driver.find_element(By.CSS_SELECTOR,".table.table-bordered.table-striped")
 
-    rows = table.find_elements(By.TAG_NAME, "tr")
-    for row in rows:
+    raw_rows = table.find_elements(By.TAG_NAME, "tr")
+    rows = []
+    for row in raw_rows:
         print(row)
         cells = row.find_elements(By.TAG_NAME, 'td')
+        _row = []
         for td in cells:
+            _row.append(td.text)
             print(td.text, end=' ')
+        rows.append(_row)
         print(end='\n')
+    header = rows[0]
+    rows = [[dt_convert(tmp[0])] + tmp[1:] for tmp in rows[1:]]
+    print(rows)
 
+    df = pandas.DataFrame(rows, columns=header)
+    print(df)
     #deposit_btn = WebDriverWait(driver, delay).until(EC.element_to_be_clickable((By.CSS_SELECTOR,".btn.btn-default"))).click()
 finally:
     driver.quit()
