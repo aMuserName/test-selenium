@@ -38,16 +38,13 @@ class BasePage:
 
     def waitForElement(self, locatorValue, locatorType='id'):
         webElement = None
-        delay = 10
+        delay = 25
         print("here")
         try:
             locatorType = locatorType.lower()
-            print('Befor')
             locatorByType = self.getLocatorType(locatorType)
-            print("in wait for element ", locatorByType, locatorValue)
             wait = WebDriverWait(self.driver, delay, poll_frequency=1,
                     ignored_exceptions=[ElementNotVisibleException, NoSuchElementException])
-            print(after)
             webElement = wait.until(EC.presence_of_element_located((locatorByType, locatorValue)))
         except:
             print(f"Waiting failed for element {locatorValue} by {locatorType}")
@@ -58,7 +55,6 @@ class BasePage:
         try:
             locatorType = locatorType.lower()
             locatorByType = self.getLocatorType(locatorType)
-            print(locatorByType, locatorValue)
             webElement = self.driver.find_element(locatorByType, locatorValue)
         except:
             print(f"Failed to find element {locatorValue} by {locatorType}")
@@ -69,7 +65,7 @@ class BasePage:
         try:
             locatorType = locatorType.lower()
             locatorByType = self.getLocatorType(locatorType)
-            webElement = self.driver.find_elements(locatorByType, locatorValue)
+            webElements = self.driver.find_elements(locatorByType, locatorValue)
         except:
             print(f"Failed to find elements {locatorValue} by {locatorType}")
         return webElements
@@ -78,7 +74,6 @@ class BasePage:
         webElement = None
         try:
             locatorType = locatorType.lower()
-            print("in click on element ", locatorType, locatorValue)
             webElement = self.waitForElement(locatorValue, locatorType)
             webElement.click()
         except:
@@ -107,8 +102,8 @@ class BasePage:
         elementText = None
         try:
             locatorType = locatorType.lower()
-            webElement = driver.waitForElement(locatorValue, locatorType)
-            webElement.text
+            webElement = self.waitForElement(locatorValue, locatorType)
+            elementText = webElement.text
         except:
             print(f"Failed to get text of element {locatorValue} by {locatorType}")
 
@@ -118,9 +113,9 @@ class CustomPage(BasePage):
     
     def pressButton(self, class_value, class_type="ng-class"):
         # TODO: refactor
-        buts = self.getWebElements(".btn.btn-lg.tab", By.CSS_SELECTOR)
+        buts = self.getWebElements(".btn.btn-lg.tab", "css_selector")
         for each in buts:
-            if class_name == each.get_dom_attribute(class_type):
+            if class_value == each.get_dom_attribute(class_type):
                 button = each 
         return button
 
@@ -152,7 +147,7 @@ class PythonSeleniumTest(unittest.TestCase):
         select.select_by_value('2') # Harry Potter  
         time.sleep(2)
 
-        page.clickOnElement(".btn.btn-default", By.CSS_SELECTOR)
+        page.clickOnElement(".btn.btn-default", "css_selector")
         time.sleep(2)
     
         # method of pressing buttoni
@@ -161,20 +156,21 @@ class PythonSeleniumTest(unittest.TestCase):
         deposit.click()
         time.sleep(2)
                    
-        page.clearText("//input[@type='number']", By.XPATH)
+        page.clearText("//input[@type='number']", "xpath")
         
         # TODO: incapsulate
         _today = datetime.today().day + 1
         calc = fibonacci_of(_today)
         print(_today, calc)
 
-        page.sendText(str(calc), "//input[@type='number']", By.XPATH)
+        page.sendText(str(calc), "//input[@type='number']", "xpath")
         time.sleep(2)
 
-        page.clickOnElement(By.XPATH, "//button[@type='submit']")
+        page.clickOnElement("//button[@type='submit']", "xpath")
         time.sleep(2)
         
-        label = page.getText("span.error.ng-binding", By.CSS_SELECTOR)
+        label = page.getText("span.error.ng-binding", "css_selector")
+        print(label)
         assert label == 'Deposit Successful'
         time.sleep(2)
      
@@ -183,19 +179,18 @@ class PythonSeleniumTest(unittest.TestCase):
         withdrawl.click()
         time.sleep(2)
        
-        page.clearText("//input[@type='number']", By.XPATH)
+        page.clearText("//input[@type='number']", "xpath")
         time.sleep(2)
 
-        page.sendText(str(calc), "//input[@type='number']", By.XPATH)
+        page.sendText(str(calc), "//input[@type='number']", "xpath")
         time.sleep(2)
 
-        page.clickOnElement(By.XPATH, "//button[@type='submit']")
-        time.sleep(2)
-        
-    
-        balance = page.getText("//div[@class='center']//strong[2]", By.XPATH)
+        page.clickOnElement("//button[@type='submit']", "xpath")
+        time.sleep(2)    
+       
+        balance = page.getText("//div[@class='center']//strong[2]", "xpath")
         assert balance == '0'
-        
+
         # GO TO TRANSACTIONS PAGE
 
         # method of pressing button 
@@ -203,7 +198,8 @@ class PythonSeleniumTest(unittest.TestCase):
         trans.click()
         time.sleep(2)
     
-        table = page.getWebElement(By.CSS_SELECTORi, ".table.table-bordered.table-striped")
+
+        table = page.getWebElement(".table.table-bordered.table-striped", "css_selector")
     
         raw_rows = table.find_elements(By.TAG_NAME,"tr")
         rows = []
