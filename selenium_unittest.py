@@ -39,7 +39,6 @@ class BasePage:
     def waitForElement(self, locatorValue, locatorType='id'):
         webElement = None
         delay = 25
-        print("here")
         try:
             locatorType = locatorType.lower()
             locatorByType = self.getLocatorType(locatorType)
@@ -110,7 +109,11 @@ class BasePage:
         return elementText
 
 class CustomPage(BasePage):
-    
+
+    def __init__(self, driver):
+        super().__init__(driver)
+        self.calc = self._calculate()
+
     def pressButton(self, class_value, class_type="ng-class"):
         # TODO: refactor
         buts = self.getWebElements(".btn.btn-lg.tab", "css_selector")
@@ -119,6 +122,61 @@ class CustomPage(BasePage):
                 button = each 
         return button
 
+    def login(self, user='2'):
+        self.clickOnElement(".btn.btn-primary.btn-lg", "css_selector")
+        time.sleep(2)
+        select = Select(self.getWebElement('userSelect', "id"))
+        select.select_by_value(user) # Harry Potter  
+        time.sleep(2)
+
+        self.clickOnElement(".btn.btn-default", "css_selector")
+        time.sleep(2)
+
+    def deposit(self):
+        # method of pressing buttoni
+        # TODO: chained path
+        
+        deposit = self.pressButton("btnClass2") 
+        deposit.click()
+        time.sleep(2)
+        print(self.calc) 
+        self.clearText("//input[@type='number']", "xpath")
+        time.sleep(2)
+        
+        self.sendText(self.calc, "//input[@type='number']", "xpath")
+        time.sleep(2)
+
+        self.clickOnElement("//button[@type='submit']", "xpath")
+        time.sleep(2)
+
+    def withdrawl(self):
+        # method of pressing button 
+        withdrawl = self.pressButton("btnClass3") 
+        withdrawl.click()
+        time.sleep(2)
+       
+        self.clearText("//input[@type='number']", "xpath")
+        time.sleep(2)
+
+        self.sendText(self.calc, "//input[@type='number']", "xpath")
+        time.sleep(2)
+
+        self.clickOnElement("//button[@type='submit']", "xpath")
+        time.sleep(2)    
+
+    def _calculate(self):
+        _today = datetime.today().day + 1
+        calc = fibonacci_of(_today)
+        return str(calc)
+
+    def check_status(self):
+        raise NotImplementedError()
+
+    def check_balance(self):
+        raise NotImplementedError()
+
+    def get_trans_history(self):
+        raise NotImplementedError()
 
 class PythonSeleniumTest(unittest.TestCase):
 
@@ -127,67 +185,24 @@ class PythonSeleniumTest(unittest.TestCase):
         service = Service()
         options = webdriver.ChromeOptions()
         cls.driver = webdriver.Chrome(service = service, options = options)
-        #cls.driver.get("https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login")
-        #TODO: logging
-        #print(driver.title)
 
     def test_process_page(self):
         delay = 10
         page = CustomPage(self.driver)
         page.launchWebPage("https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login", None)
-        page.clickOnElement(".btn.btn-primary.btn-lg", "css_selector")
-        time.sleep(2)
         
-        elem = page.getWebElement('userSelect', "id")
-        #webElement = self.driver.find_element( "userSelect")
-        #print(webElement)
-        print(type(elem))
-        print(elem)
-        select = Select(elem)
-        select.select_by_value('2') # Harry Potter  
-        time.sleep(2)
-
-        page.clickOnElement(".btn.btn-default", "css_selector")
-        time.sleep(2)
-    
-        # method of pressing buttoni
-        # TODO: chained path
-        deposit = page.pressButton("btnClass2") 
-        deposit.click()
-        time.sleep(2)
-                   
-        page.clearText("//input[@type='number']", "xpath")
+        page.login()
         
-        # TODO: incapsulate
-        _today = datetime.today().day + 1
-        calc = fibonacci_of(_today)
-        print(_today, calc)
-
-        page.sendText(str(calc), "//input[@type='number']", "xpath")
-        time.sleep(2)
-
-        page.clickOnElement("//button[@type='submit']", "xpath")
-        time.sleep(2)
-        
+        page.deposit()
         label = page.getText("span.error.ng-binding", "css_selector")
-        print(label)
         assert label == 'Deposit Successful'
         time.sleep(2)
-     
-        # method of pressing button 
-        withdrawl = page.pressButton("btnClass3") 
-        withdrawl.click()
+        
+        page.withdrawl()
+        label = page.getText("span.error.ng-binding", "css_selector")
+        assert label == 'Transaction successful'
         time.sleep(2)
-       
-        page.clearText("//input[@type='number']", "xpath")
-        time.sleep(2)
-
-        page.sendText(str(calc), "//input[@type='number']", "xpath")
-        time.sleep(2)
-
-        page.clickOnElement("//button[@type='submit']", "xpath")
-        time.sleep(2)    
-       
+            
         balance = page.getText("//div[@class='center']//strong[2]", "xpath")
         assert balance == '0'
 
@@ -229,11 +244,9 @@ def fibonacci_of(n):
     if not (isinstance(n, int) and n >= 0):
         raise ValueError(f'Positive integer number expected, got "{n}"')
 
-
     # Handle the base cases
     if n in {0, 1}:
         return n
-
 
     previous, fib_number = 0, 1
     for _ in range(2, n + 1):
