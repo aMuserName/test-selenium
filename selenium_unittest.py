@@ -11,6 +11,8 @@ from datetime import datetime
 import pandas
 import unittest
 import time
+import allure
+from operator import itemgetter
 
 
 class BasePage:
@@ -108,11 +110,24 @@ class BasePage:
 
         return elementText
 
+    def publish_to_allure(self):
+        #TODO: set dir
+        csv_file = pandas.DataFrame(
+                self.transactions[:-1],
+                columns=self.transactions[-1])
+        print(csv_file)
+        allure.attach(
+                csv_file,
+                name='default',
+                attachment_type=allure.attachment_type.CSV
+        )
+
 class CustomPage(BasePage):
 
     def __init__(self, driver):
         super().__init__(driver)
         self.calc = self._calculate()
+        self.transactions = []
 
     def pressButton(self, class_value, class_type="ng-class"):
         # TODO: refactor
@@ -139,7 +154,7 @@ class CustomPage(BasePage):
         deposit = self.pressButton("btnClass2") 
         deposit.click()
         time.sleep(2)
-        print(self.calc) 
+        
         self.clearText("//input[@type='number']", "xpath")
         time.sleep(2)
         
@@ -170,13 +185,37 @@ class CustomPage(BasePage):
         return str(calc)
 
     def check_status(self):
-        raise NotImplementedError()
+        return self.getText("span.error.ng-binding", "css_selector")
 
     def check_balance(self):
-        raise NotImplementedError()
+        return self.getText("//div[@class='center']//strong[2]", "xpath")
 
     def get_trans_history(self):
-        raise NotImplementedError()
+
+        # method of pressing button 
+        trans = self.pressButton("btnClass1") 
+        trans.click()
+        time.sleep(2)
+    
+        table = self.getWebElement(".table.table-bordered.table-striped", "css_selector")
+    
+        raw_rows = table.find_elements(By.TAG_NAME,"tr")
+        rows = []
+        for row in raw_rows:
+            cells = row.find_elements(By.TAG_NAME, 'td')
+            _row = []
+            for td in cells:
+                _row.append(td.text)
+            rows.append(_row)
+
+        header = rows[0]
+        rows = [[dt_convert(tmp[0])] + tmp[1:] + [dt_get(tmp[0])] for tmp in rows[1:]]
+        rows = sorted(rows, key=itemgetter(-1))
+        rows = [tmp[:-1] for tmp in rows] # del verbose elem
+        rows.append(header)
+        for line in rows:
+            self.transactions.append(line)
+
 
 class PythonSeleniumTest(unittest.TestCase):
 
@@ -184,7 +223,12 @@ class PythonSeleniumTest(unittest.TestCase):
     def setUpClass(cls):
         service = Service()
         options = webdriver.ChromeOptions()
-        cls.driver = webdriver.Chrome(service = service, options = options)
+        #cls.driver = webdriver.Chrome(service = service, options = options)
+        # TODO: set env 
+        cls.driver = webdriver.Remote(
+                command_executor='http://127.0.0.1:4444/wd/hub',
+                options=webdriver.ChromeOptions()
+        )
 
     def test_process_page(self):
         delay = 10
@@ -192,47 +236,25 @@ class PythonSeleniumTest(unittest.TestCase):
         page.launchWebPage("https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login", None)
         
         page.login()
-        
+        # TODO: assertion to successful login
+
         page.deposit()
-        label = page.getText("span.error.ng-binding", "css_selector")
-        assert label == 'Deposit Successful'
-        time.sleep(2)
+        assert page.check_status() == 'Deposit Successful'
+        # TODO: method to retrieve calc 
+        assert page.check_balance() == page.calc
+        time.sleep(14) # to sort rows later
         
         page.withdrawl()
-        label = page.getText("span.error.ng-binding", "css_selector")
-        assert label == 'Transaction successful'
-        time.sleep(2)
-            
-        balance = page.getText("//div[@class='center']//strong[2]", "xpath")
-        assert balance == '0'
+        assert page.check_status() == 'Transaction successful'
+        assert page.check_balance() == '0'
+        time.sleep(2)    
 
         # GO TO TRANSACTIONS PAGE
+        page.get_trans_history()
+        assert page.transactions[0][1] == page.calc and page.transactions[0][2] == 'Credit' 
+        assert page.transactions[1][1] == page.calc and page.transactions[1][2] == 'Debit' 
 
-        # method of pressing button 
-        trans = page.pressButton("btnClass1") 
-        trans.click()
-        time.sleep(2)
-    
-
-        table = page.getWebElement(".table.table-bordered.table-striped", "css_selector")
-    
-        raw_rows = table.find_elements(By.TAG_NAME,"tr")
-        rows = []
-        for row in raw_rows:
-            print(row)
-            cells = row.find_elements(By.TAG_NAME, 'td')
-            _row = []
-            for td in cells:
-                _row.append(td.text)
-                print(td.text, end=' ')
-            rows.append(_row)
-            print(end='\n')
-        header = rows[0]
-        rows = [[dt_convert(tmp[0])] + tmp[1:] for tmp in rows[1:]]
-        print(rows)
-    
-        df = pandas.DataFrame(rows, columns=header)
-        print(df)
+        page.publish_to_allure()
 
     @classmethod
     def tearDownClass(cls):
@@ -256,11 +278,12 @@ def fibonacci_of(n):
     return previous
 
 def dt_convert(from_dt: str, to_dt: str = "%d %B %Y %H:%M:%S"):
-    print(from_dt)
     res = datetime.strptime(from_dt, "%b %d, %Y %I:%M:%S %p")
     output = res.strftime(to_dt)
     return output
 
+def dt_get(from_dt: str):
+    return datetime.strptime(from_dt, "%b %d, %Y %I:%M:%S %p")
 
 if __name__ == '__main__':
     unittest.main()
